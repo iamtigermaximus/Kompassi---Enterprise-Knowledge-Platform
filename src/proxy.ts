@@ -14,7 +14,7 @@ const MIN_KEY_LENGTH = KEY_PREFIX.length + 32;
 /**
  * Routes that do NOT require authentication.
  */
-const PUBLIC_ROUTES = ["/api/health", "/api/admin"];
+const PUBLIC_ROUTES = ["/api/health", "/api/admin", "/api/auth"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
