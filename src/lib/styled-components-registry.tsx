@@ -17,10 +17,8 @@ export default function StyledComponentsRegistry({
     return <>{styles}</>;
   });
 
-  if (typeof window !== "undefined") {
-    return <>{children}</>;
-  }
-
+  // Always render with StyleSheetManager — same tree on server & client
+  // avoids hydration mismatch from typeof window branching.
   return (
     <StyleSheetManager sheet={styledComponentsStyleSheet.instance}>
       {children}

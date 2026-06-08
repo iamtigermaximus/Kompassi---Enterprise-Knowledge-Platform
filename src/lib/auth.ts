@@ -1,7 +1,10 @@
 // KOMPASSI - Authentication Helper
-// Validates x-api-key header, looks up the tenant, and sets tenant context for RLS.
+// Validates x-api-key header, looks up the tenant, sets tenant context for RLS,
+// and enforces per-tenant rate limits.
 
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import type { RateLimitResult } from "@/lib/rate-limit";
 import type { Tenant } from "@prisma/client";
 
 export class AuthError extends Error {
@@ -14,11 +17,21 @@ export class AuthError extends Error {
   }
 }
 
+export class RateLimitError extends Error {
+  status: number;
+  headers: Record<string, string>;
+
+  constructor(result: RateLimitResult) {
+    super("Rate limit exceeded. Try again after the reset timestamp.");
+    this.name = "RateLimitError";
+    this.status = 429;
+    this.headers = rateLimitHeaders(result);
+  }
+}
+
 /**
  * Validate the API key and return the tenant.
  * Sets `app.current_tenant_id` in PostgreSQL for Row-Level Security.
- *
- * Call this at the top of every authenticated API route handler.
  *
  * @throws {AuthError} if the API key is missing or invalid
  */
@@ -47,7 +60,10 @@ export async function validateApiKey(apiKey: string | null): Promise<Tenant> {
 }
 
 /**
- * Express-style wrapper: validates the API key and calls the handler with tenant context.
+ * Express-style wrapper: validates API key, enforces rate limit,
+ * and calls the handler with tenant context.
+ *
+ * Rate limit headers (X-RateLimit-*) are injected into every response.
  *
  * Usage:
  *   export const GET = withAuth(async (request, tenant) => { ... });
@@ -57,14 +73,48 @@ export function withAuth<T>(
 ) {
   return async (request: Request): Promise<Response> => {
     try {
+      // Step 1: Authenticate
       const apiKey = request.headers.get("x-api-key");
       const tenant = await validateApiKey(apiKey);
-      return await handler(request, tenant) as Response;
+
+      // Step 2: Check rate limit
+      const rateLimitResult = await checkRateLimit(tenant);
+
+      if (!rateLimitResult.success) {
+        return Response.json(
+          {
+            error: "Rate limit exceeded. Try again after the reset timestamp.",
+            plan: tenant.plan,
+          },
+          {
+            status: 429,
+            headers: rateLimitHeaders(rateLimitResult),
+          }
+        );
+      }
+
+      // Step 3: Execute handler
+      const response = await handler(request, tenant);
+      const responseObj = response as Response;
+
+      // Step 4: Inject rate limit headers into the response
+      const headers = rateLimitHeaders(rateLimitResult);
+      for (const [key, value] of Object.entries(headers)) {
+        responseObj.headers.set(key, value);
+      }
+
+      return responseObj;
     } catch (error) {
       if (error instanceof AuthError) {
         return Response.json(
           { error: error.message },
           { status: error.status }
+        );
+      }
+      if (error instanceof RateLimitError) {
+        return Response.json(
+          { error: error.message },
+          { status: error.status, headers: error.headers }
         );
       }
       console.error("Unexpected auth error:", error);

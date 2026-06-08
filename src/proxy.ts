@@ -1,6 +1,8 @@
-// KOMPASSI - Next.js Middleware
+// KOMPASSI - Next.js Proxy
 // First line of defense: validates that x-api-key header is present on /api/* routes.
 // Full database validation is performed inside each API route via `validateApiKey()`.
+//
+// Note: "proxy" replaces "middleware" as of Next.js 16.
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -11,12 +13,10 @@ const MIN_KEY_LENGTH = KEY_PREFIX.length + 32;
 
 /**
  * Routes that do NOT require authentication.
- * - /api/health is public (health checks)
- * - /api/admin/* will use a separate admin auth mechanism (Task 6)
  */
 const PUBLIC_ROUTES = ["/api/health"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Only apply to API routes
@@ -58,8 +58,7 @@ export function middleware(request: NextRequest) {
 }
 
 /**
- * Configure which paths the middleware runs on.
- * Match all /api/* routes except Next.js internals.
+ * Configure which paths the proxy runs on.
  */
 export const config = {
   matcher: ["/api/:path*"],
