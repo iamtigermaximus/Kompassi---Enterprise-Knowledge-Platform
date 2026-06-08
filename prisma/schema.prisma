@@ -2,7 +2,8 @@
 // Prisma Schema v6 with PostgreSQL + pgvector + Row-Level Security
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
