@@ -1,5 +1,6 @@
 // KOMPASSI - Admin Dashboard
 // Real-time metrics, usage chart, and tenant overview.
+// Auth handled by AdminAuthGuard in the layout — this page uses session cookies.
 
 "use client";
 
@@ -56,58 +57,6 @@ const Page = styled.div`
   gap: 24px;
 `;
 
-const AuthBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-`;
-
-const AuthInput = styled.input`
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 13px;
-  color: #0f172a;
-  outline: none;
-
-  &:focus {
-    border-color: #c9a03d;
-  }
-
-  &::placeholder {
-    color: #94a3b8;
-  }
-`;
-
-const AuthButton = styled.button`
-  padding: 8px 20px;
-  background-color: #1e3a5f;
-  color: #ffffff;
-  border: none;
-  border-radius: 6px;
-  font-family: "Inter", sans-serif;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background-color 0.15s;
-
-  &:hover {
-    background-color: #162d4a;
-  }
-`;
-
-const AuthError = styled.span`
-  font-family: "Inter", sans-serif;
-  font-size: 12px;
-  color: #dc2626;
-`;
-
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -123,34 +72,34 @@ const Grid = styled.div`
 
 const Card = styled.div`
   padding: 24px;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 `;
 
 const CardLabel = styled.p`
-  font-family: "Inter", sans-serif;
+  font-family: var(--font);
   font-weight: 400;
   font-size: 12px;
-  color: #475569;
+  color: var(--text-secondary);
   margin: 0 0 8px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 `;
 
 const CardValue = styled.p`
-  font-family: "Inter", sans-serif;
+  font-family: var(--font);
   font-weight: 600;
   font-size: 28px;
-  color: #0f172a;
+  color: var(--text);
   margin: 0;
 `;
 
 const CardSub = styled.p`
-  font-family: "Inter", sans-serif;
+  font-family: var(--font);
   font-weight: 400;
   font-size: 12px;
-  color: #475569;
+  color: var(--text-secondary);
   margin: 4px 0 0;
 `;
 
@@ -159,10 +108,10 @@ const ChartCard = styled(Card)`
 `;
 
 const ChartTitle = styled.h3`
-  font-family: "Inter", sans-serif;
+  font-family: var(--font);
   font-weight: 600;
   font-size: 15px;
-  color: #0f172a;
+  color: var(--text);
   margin: 0 0 16px;
 `;
 
@@ -174,26 +123,26 @@ const ChartContainer = styled.div`
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font);
   font-size: 13px;
 `;
 
 const Th = styled.th`
   text-align: left;
   padding: 10px 12px;
-  background-color: #f8fafc;
+  background-color: var(--bg-secondary);
   font-weight: 600;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #475569;
-  border-bottom: 2px solid #e2e8f0;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
 `;
 
 const Td = styled.td`
   padding: 10px 12px;
-  color: #0f172a;
-  border-bottom: 1px solid #e2e8f0;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
 `;
 
 const PlanBadge = styled.span<{ $plan: string }>`
@@ -205,11 +154,11 @@ const PlanBadge = styled.span<{ $plan: string }>`
   color: ${(props) => {
     switch (props.$plan) {
       case "ENTERPRISE":
-        return "#1e3a5f";
+        return "var(--secondary)";
       case "PRO":
-        return "#c9a03d";
+        return "var(--primary)";
       default:
-        return "#475569";
+        return "var(--text-secondary)";
     }
   }};
   background-color: ${(props) => {
@@ -219,7 +168,7 @@ const PlanBadge = styled.span<{ $plan: string }>`
       case "PRO":
         return "rgba(201, 160, 61, 0.1)";
       default:
-        return "#f8fafc";
+        return "var(--bg-secondary)";
     }
   }};
 `;
@@ -234,8 +183,8 @@ const SearchItem = styled.li`
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid #e2e8f0;
-  font-family: "Inter", sans-serif;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font);
   font-size: 13px;
 
   &:last-child {
@@ -244,19 +193,27 @@ const SearchItem = styled.li`
 `;
 
 const SearchQuery = styled.span`
-  color: #0f172a;
+  color: var(--text);
 `;
 
 const SearchCount = styled.span`
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
-  color: #475569;
+  color: var(--text-secondary);
 `;
 
 const LoadingText = styled.p`
-  font-family: "Inter", sans-serif;
+  font-family: var(--font);
   font-size: 14px;
-  color: #475569;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 48px;
+`;
+
+const ErrorText = styled.p`
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--error);
   text-align: center;
   padding: 48px;
 `;
@@ -266,111 +223,57 @@ const LoadingText = styled.p`
 // ═════════════════════════════════════════════════════════════════════════════
 
 export default function AdminDashboard() {
-  const [adminKey, setAdminKey] = useState("");
-  const [authError, setAuthError] = useState("");
-  const [isAuthed, setIsAuthed] = useState(false);
-  const [storedKey, setStoredKey] = useState("");
-
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [usage, setUsage] = useState<UsagePoint[]>([]);
   const [tenants, setTenants] = useState<TenantRow[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Authenticate with admin key
-  const handleAuth = useCallback(async (key: string) => {
-    setAuthError("");
+  // Fetch all dashboard data (session cookie sent automatically)
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    try {
-      const res = await fetch("/api/admin/metrics", {
-        headers: { "x-admin-key": key },
-      });
-      if (!res.ok) {
-        setAuthError("Invalid admin key. Check your ADMIN_API_KEY env variable.");
-        setLoading(false);
-        return;
-      }
-      setStoredKey(key);
-      setIsAuthed(true);
-      // Don't set loading false — fetchData will do it
-    } catch {
-      setAuthError("Failed to connect. Is the server running?");
-      setLoading(false);
-    }
-  }, []);
-
-  // Fetch all dashboard data
-  const fetchData = useCallback(async (key: string) => {
-    setLoading(true);
-    const headers = { "x-admin-key": key };
+    setError("");
 
     try {
       const [metricsRes, usageRes, tenantsRes] = await Promise.all([
-        fetch("/api/admin/metrics", { headers }),
-        fetch("/api/admin/usage", { headers }),
-        fetch("/api/admin/tenants", { headers }),
+        fetch("/api/admin/metrics"),
+        fetch("/api/admin/usage"),
+        fetch("/api/admin/tenants"),
       ]);
 
-      if (metricsRes.ok) setMetrics(await metricsRes.json());
-      if (usageRes.ok) {
-        const u = await usageRes.json();
-        setUsage(u.data ?? []);
+      if (!metricsRes.ok || !usageRes.ok || !tenantsRes.ok) {
+        setError("Failed to load dashboard data. Check your session.");
+        return;
       }
-      if (tenantsRes.ok) {
-        const t = await tenantsRes.json();
-        setTenants(t.tenants ?? []);
-      }
+
+      setMetrics(await metricsRes.json());
+
+      const u = await usageRes.json();
+      setUsage(u.data ?? []);
+
+      const t = await tenantsRes.json();
+      setTenants(t.tenants ?? []);
     } catch (err) {
       console.error("Dashboard fetch error:", err);
+      setError("Network error. Check your connection.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Load data when authenticated
+  // Load on mount
   useEffect(() => {
-    if (isAuthed && storedKey) {
-      fetchData(storedKey);
-    }
-  }, [isAuthed, storedKey, fetchData]);
+    fetchData();
+  }, [fetchData]);
 
   // Refresh every 30s
   useEffect(() => {
-    if (!isAuthed || !storedKey) return;
-    const interval = setInterval(() => fetchData(storedKey), 30000);
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [isAuthed, storedKey, fetchData]);
+  }, [fetchData]);
 
-  // Not authenticated — show login
-  if (!isAuthed) {
-    return (
-      <Page>
-        <Card>
-          <CardLabel>Admin Authentication</CardLabel>
-          <CardValue style={{ fontSize: 20, marginBottom: 16 }}>
-            Enter admin key
-          </CardValue>
-          <AuthBar>
-            <AuthInput
-              type="password"
-              placeholder="Paste your ADMIN_API_KEY..."
-              value={adminKey}
-              onChange={(e) => setAdminKey(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAuth(adminKey)}
-            />
-            <AuthButton
-              onClick={() => handleAuth(adminKey)}
-              disabled={!adminKey.trim()}
-            >
-              Unlock
-            </AuthButton>
-          </AuthBar>
-          {authError && <AuthError>{authError}</AuthError>}
-          <CardSub style={{ marginTop: 12 }}>
-            Set ADMIN_API_KEY in your .env file.
-          </CardSub>
-        </Card>
-      </Page>
-    );
+  if (error) {
+    return <ErrorText>{error}</ErrorText>;
   }
 
   if (loading && !metrics) {
@@ -426,30 +329,38 @@ export default function AdminDashboard() {
                 <LineChart data={usage}>
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="#e2e8f0"
+                    stroke="var(--border)"
                     strokeWidth={1}
                   />
                   <XAxis
                     dataKey="day"
-                    tick={{ fontSize: 11, fill: "#475569", fontFamily: "Inter" }}
+                    tick={{
+                      fontSize: 11,
+                      fill: "var(--text-secondary)",
+                      fontFamily: "Inter",
+                    }}
                     tickLine={false}
-                    axisLine={{ stroke: "#e2e8f0" }}
+                    axisLine={{ stroke: "var(--border)" }}
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: "#475569", fontFamily: "Inter" }}
+                    tick={{
+                      fontSize: 11,
+                      fill: "var(--text-secondary)",
+                      fontFamily: "Inter",
+                    }}
                     tickLine={false}
-                    axisLine={{ stroke: "#e2e8f0" }}
+                    axisLine={{ stroke: "var(--border)" }}
                     allowDecimals={false}
                   />
                   <Tooltip
                     contentStyle={{
-                      border: "1px solid #e2e8f0",
+                      border: "1px solid var(--border)",
                       borderRadius: 6,
                       fontFamily: "Inter, sans-serif",
                       fontSize: 12,
-                      color: "#0f172a",
-                      backgroundColor: "#ffffff",
+                      color: "var(--text)",
+                      backgroundColor: "var(--bg)",
                     }}
                   />
                   <Line
@@ -494,7 +405,7 @@ export default function AdminDashboard() {
               <tbody>
                 {tenants.length === 0 ? (
                   <tr>
-                    <Td colSpan={6} style={{ textAlign: "center", color: "#94a3b8" }}>
+                    <Td colSpan={6} style={{ textAlign: "center", color: "var(--text-muted)" }}>
                       No tenants yet. Run npx prisma db seed.
                     </Td>
                   </tr>
@@ -502,9 +413,9 @@ export default function AdminDashboard() {
                   tenants.map((t) => (
                     <tr key={t.id}>
                       <Td>
-                        <strong style={{ color: "#0f172a" }}>{t.name}</strong>
+                        <strong style={{ color: "var(--text)" }}>{t.name}</strong>
                         <br />
-                        <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
                           {t.slug}
                         </span>
                       </Td>
@@ -530,7 +441,7 @@ export default function AdminDashboard() {
               {metrics.popularSearches.map((s, i) => (
                 <SearchItem key={i}>
                   <SearchQuery>{s.query}</SearchQuery>
-                  <SearchCount>{s.count}×</SearchCount>
+                  <SearchCount>{s.count}x</SearchCount>
                 </SearchItem>
               ))}
             </SearchesList>

@@ -1,9 +1,11 @@
 // KOMPASSI - Database Seed
 // Creates demo tenants for FREE, PRO, and ENTERPRISE plans.
+// Seeds admin users with hashed passwords for login.
 // Run: npx prisma db seed
 
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
+import { hashPassword } from "../src/lib/password";
 
 const prisma = new PrismaClient();
 
@@ -68,7 +70,7 @@ const tenants = [
 ];
 
 async function main() {
-  console.log("🌱 Seeding KOMPASSI database...\n");
+  console.log(" Seeding KOMPASSI database...\n");
 
   for (const t of tenants) {
     const apiKey = generateApiKey();
@@ -85,27 +87,35 @@ async function main() {
       },
     });
 
-    console.log(`  ✓ ${t.name} (${t.plan})`);
+    console.log(`  ${t.name} (${t.plan})`);
     console.log(`    API Key: ${apiKey}`);
     console.log(`    ID:      ${tenant.id}`);
 
     for (const u of t.users) {
+      const hashedPw = await hashPassword("kompassi123");
+
       await prisma.user.upsert({
         where: { email: u.email },
-        update: {},
+        update: { password: hashedPw },
         create: {
           email: u.email,
           name: u.name,
+          password: hashedPw,
           role: u.role,
           tenantId: tenant.id,
         },
       });
     }
-    console.log(`    Users:   ${t.users.map((u) => u.name).join(", ")}\n`);
+    console.log(`    Users:   ${t.users.map((u) => u.name).join(", ")}`);
+    console.log(`    Default password for all users: kompassi123\n`);
   }
 
-  console.log("Done. Use these API keys to authenticate requests:");
-  console.log("  Header: x-api-key: <key>\n");
+  console.log("Done. Admin login credentials:");
+  console.log("  Email:  alice@startuplabs.dev  (or any seeded user)");
+  console.log("  Password: kompassi123");
+  console.log("  URL:     http://localhost:3000/login\n");
+  console.log("For API access (x-api-key header):");
+  console.log("  Use the API keys printed above.\n");
 }
 
 main()

@@ -1,6 +1,8 @@
-// KOMPASSI - Admin Authentication
-// Separate from tenant auth: uses an admin API key (env variable).
-// Does NOT set RLS context, allowing cross-tenant queries for the dashboard.
+// KOMPASSI - Admin Authentication (Session-based)
+// Admin API routes validate the kp_session cookie (JWT).
+// Does NOT set RLS context — admins see across all tenants.
+
+import { verifyJwt } from "@/lib/jwt";
 
 export class AdminAuthError extends Error {
   status: number;
@@ -13,37 +15,17 @@ export class AdminAuthError extends Error {
 }
 
 /**
- * Validate the admin API key.
- * Unlike tenant auth, this does NOT set RLS context — admins
- * need visibility across all tenants for the dashboard.
+ * Extract and validate the session cookie from the request.
  */
-export function validateAdminKey(key: string | null): void {
-  const ADMIN_KEY = process.env.ADMIN_API_KEY;
-
-  if (!ADMIN_KEY) {
-    throw new AdminAuthError(
-      "ADMIN_API_KEY not configured. Set it in your .env file.",
-      500
-    );
-  }
-
-  if (!key || key.trim().length === 0) {
-    throw new AdminAuthError(
-      "Missing x-admin-key header.",
-      401
-    );
-  }
-
-  if (key.trim() !== ADMIN_KEY) {
-    throw new AdminAuthError(
-      "Invalid admin credentials.",
-      401
-    );
-  }
+function getSession(request: Request) {
+  const cookie = request.headers.get("cookie") || "";
+  const match = cookie.match(/kp_session=([^;]+)/);
+  if (!match) return null;
+  return verifyJwt(match[1]);
 }
 
 /**
- * Wrapper for admin API routes. Validates the admin key and calls the handler.
+ * Wrapper for admin API routes. Validates the session cookie.
  *
  * Usage:
  *   export const GET = withAdminAuth(async (request) => { ... });
@@ -53,8 +35,13 @@ export function withAdminAuth<T>(
 ) {
   return async (request: Request): Promise<Response> => {
     try {
-      const adminKey = request.headers.get("x-admin-key");
-      validateAdminKey(adminKey);
+      const session = getSession(request);
+      if (!session) {
+        return Response.json(
+          { error: "Not authenticated." },
+          { status: 401 }
+        );
+      }
       return (await handler(request)) as Response;
     } catch (error) {
       if (error instanceof AdminAuthError) {
@@ -63,7 +50,7 @@ export function withAdminAuth<T>(
           { status: error.status }
         );
       }
-      console.error("Unexpected admin error:", error);
+      console.error("Admin error:", error);
       return Response.json(
         { error: "Internal server error" },
         { status: 500 }
