@@ -1,0 +1,106 @@
+// KOMPASSI - Enterprise Knowledge Platform
+// Prisma Schema v6 with PostgreSQL + pgvector + Row-Level Security
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector, citext]
+}
+
+// ─── Tenant ─────────────────────────────────────────────────────────────────
+// Each customer is a tenant with isolated data.
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("FREE") // FREE | PRO | ENTERPRISE
+  apiKey    String   @unique @default(cuid())
+  queriesPerDay Int  @default(50) // based on plan: FREE=50, PRO=1000, ENTERPRISE=10000
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  documents Document[]
+  chunks    Chunk[]
+  queryLogs QueryLog[]
+
+  @@map("tenants")
+}
+
+// ─── User ────────────────────────────────────────────────────────────────────
+// Members belong to a single tenant.
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   @default("MEMBER") // ADMIN | MEMBER
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  queryLogs QueryLog[]
+
+  @@map("users")
+}
+
+// ─── Document ────────────────────────────────────────────────────────────────
+// Uploaded PDFs and their extracted text content.
+model Document {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  filename  String
+  title     String
+  content   String   // extracted text
+  fileType  String   // e.g. "application/pdf"
+  fileSize  Int      // bytes
+  status    String   @default("PROCESSING") // PROCESSING | READY | ERROR
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chunks    Chunk[]
+
+  @@map("documents")
+}
+
+// ─── Chunk ───────────────────────────────────────────────────────────────────
+// Document chunks with vector embeddings for semantic search.
+model Chunk {
+  id          String   @id @default(cuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  content     String
+  embedding   Unsupported("vector(384)")? // 384-dim from sentence-transformers/all-MiniLM-L6-v2
+  chunkIndex  Int
+  createdAt   DateTime @default(now())
+
+  @@map("chunks")
+}
+
+// ─── QueryLog ────────────────────────────────────────────────────────────────
+// Every RAG query is logged for audit, cost tracking, and analytics.
+model QueryLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  query     String
+  answer    String
+  sources   String   @default("[]") // JSON array of source document IDs
+  tokensIn  Int      @default(0)
+  tokensOut Int      @default(0)
+  cost      Float    @default(0)
+  latency   Int      @default(0) // milliseconds
+  model     String
+  timestamp DateTime @default(now())
+
+  @@map("query_logs")
+}
