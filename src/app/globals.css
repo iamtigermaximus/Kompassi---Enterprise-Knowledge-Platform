@@ -1,0 +1,40 @@
+/* KOMPASSI - Enterprise Knowledge Platform
+   Global Styles
+   Color palette:
+   - Background: #FFFFFF
+   - Secondary Background: #F8FAFC
+   - Text Primary: #0F172A
+   - Text Secondary: #475569
+   - Accent Brass: #C9A03D
+   - Accent Navy: #1E3A5F
+   - Border: #E2E8F0
+   - Error: #DC2626
+   - Success: #059669
+*/
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  color: #0F172A;
+  background-color: #FFFFFF;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+code,
+pre {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
