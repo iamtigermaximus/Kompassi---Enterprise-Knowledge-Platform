@@ -9,6 +9,7 @@ import { isEmbedServerRunning } from "@/lib/embeddings";
 
 interface ChatRequest {
   query: string;
+  documentIds?: string[];
 }
 
 export const POST = withAuth(async (request, tenant) => {
@@ -46,7 +47,7 @@ export const POST = withAuth(async (request, tenant) => {
 
   // Run the RAG pipeline
   try {
-    const result = await ragQuery(query, tenant.id);
+    const result = await ragQuery(query, tenant.id, undefined, body.documentIds);
 
     return NextResponse.json({
       query,

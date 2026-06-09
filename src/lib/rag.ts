@@ -8,7 +8,7 @@ import { chat } from "@/lib/deepseek";
 import type { Chunk } from "@prisma/client";
 
 const TOP_K = 5; // Number of chunks to retrieve
-const SIMILARITY_THRESHOLD = 0.3; // Minimum cosine similarity to include a chunk
+const SIMILARITY_THRESHOLD = 0.15; // Minimum cosine similarity (0-1, lower = more results)
 
 interface RetrievedChunk {
   chunk: Chunk;
@@ -18,7 +18,7 @@ interface RetrievedChunk {
 
 export interface RagResult {
   answer: string;
-  sources: string[]; // Document titles used as sources
+  sources: string[];
   tokensIn: number;
   tokensOut: number;
   cost: number;
@@ -27,16 +27,12 @@ export interface RagResult {
 
 /**
  * Run the full RAG pipeline for a tenant-scoped query.
- *
- * @param query - User's natural language question
- * @param tenantId - Tenant ID for tenant isolation
- * @param userId - Optional user ID for audit logging
- * @returns Answer with sources, tokens, cost, and latency
  */
 export async function ragQuery(
   query: string,
   tenantId: string,
-  userId?: string
+  userId?: string,
+  documentIds?: string[]
 ): Promise<RagResult> {
   const startedAt = Date.now();
 
@@ -44,9 +40,34 @@ export async function ragQuery(
   const [queryEmbedding] = await generateEmbeddings([query]);
   const embeddingLiteral = formatVectorLiteral(queryEmbedding);
 
-  // Step 2: Vector similarity search (cosine distance), tenant-scoped
-  // Uses pgvector's <=> operator for cosine distance.
-  // lower distance = more similar.
+  console.log(`[rag] Query: "${query.slice(0, 80)}..." | Tenant: ${tenantId} | Embedding dims: ${queryEmbedding.length}`);
+
+  // Step 2: Check if there are any chunks for this tenant at all
+  const chunkWhere: Record<string, unknown> = { tenantId };
+  if (documentIds && documentIds.length > 0) {
+    chunkWhere.documentId = { in: documentIds };
+  }
+  const chunkCount = await prisma.chunk.count({ where: chunkWhere });
+  console.log(`[rag] Chunks in tenant (filtered): ${chunkCount}`);
+
+  if (chunkCount === 0) {
+    const latency = Date.now() - startedAt;
+    return {
+      answer:
+        "No documents have been uploaded to your workspace yet. Upload a PDF first, then ask questions about its content.",
+      sources: [],
+      tokensIn: 0,
+      tokensOut: 0,
+      cost: 0,
+      latency,
+    };
+  }
+
+  // Step 3: Vector similarity search (cosine distance), tenant-scoped
+  const docIdFilter = documentIds && documentIds.length > 0
+    ? `AND c."documentId" IN (${documentIds.map((_, i) => `$${i + 3}`).join(",")})`
+    : "";
+
   const chunks = await prisma.$queryRawUnsafe<
     Array<{
       id: string;
@@ -54,7 +75,7 @@ export async function ragQuery(
       tenantId: string;
       content: string;
       chunkIndex: number;
-      "d.title": string;
+      title: string;
       similarity: number;
     }>
   >(
@@ -69,29 +90,35 @@ export async function ragQuery(
      FROM chunks c
      JOIN documents d ON d.id = c."documentId"
      WHERE c."tenantId" = $2
-       AND 1 - (c.embedding <=> $1::vector) > $3
+       ${docIdFilter}
      ORDER BY c.embedding <=> $1::vector
-     LIMIT $4`,
+     LIMIT $3`,
     embeddingLiteral,
     tenantId,
-    SIMILARITY_THRESHOLD,
+    ...(documentIds && documentIds.length > 0 ? documentIds : []),
     TOP_K
   );
 
-  // Step 3: Format context for the LLM
-  const retrievedChunks: RetrievedChunk[] = chunks.map((row) => ({
-    chunk: {
-      id: row.id,
-      documentId: row.documentId,
-      tenantId: row.tenantId,
-      content: row.content,
-      chunkIndex: row.chunkIndex,
-      embedding: queryEmbedding, // not used downstream
-      createdAt: new Date(),
-    },
-    documentTitle: row["d.title"],
-    similarity: row.similarity,
-  }));
+  console.log(`[rag] Vector search returned ${chunks.length} chunks (top similarities: ${chunks.slice(0, 3).map(c => c.similarity?.toFixed(4)).join(", ")})`);
+
+  // Step 4: Format context for the LLM
+  const retrievedChunks: RetrievedChunk[] = chunks
+    .filter((row) => row.similarity > SIMILARITY_THRESHOLD)
+    .map((row) => ({
+      chunk: {
+        id: row.id,
+        documentId: row.documentId,
+        tenantId: row.tenantId,
+        content: row.content,
+        chunkIndex: row.chunkIndex,
+        embedding: queryEmbedding,
+        createdAt: new Date(),
+      },
+      documentTitle: row.title,
+      similarity: row.similarity,
+    }));
+
+  console.log(`[rag] After threshold (${SIMILARITY_THRESHOLD}): ${retrievedChunks.length} chunks`);
 
   if (retrievedChunks.length === 0) {
     const latency = Date.now() - startedAt;
@@ -114,7 +141,7 @@ export async function ragQuery(
     )
     .join("\n\n");
 
-  // Step 4: Call DeepSeek with context
+  // Step 5: Call DeepSeek with context
   const chatResult = await chat(query, context);
 
   // Deduplicate source titles while preserving order
@@ -124,7 +151,7 @@ export async function ragQuery(
 
   const latency = Date.now() - startedAt;
 
-  // Step 5: Log query to QueryLog for cost tracking and audit
+  // Step 6: Log query
   try {
     await prisma.queryLog.create({
       data: {
@@ -141,7 +168,6 @@ export async function ragQuery(
       },
     });
   } catch (logError) {
-    // Don't fail the request if logging fails
     console.error("Failed to log query:", logError);
   }
 
@@ -155,10 +181,6 @@ export async function ragQuery(
   };
 }
 
-/**
- * Format a number array as a pgvector literal string.
- * Example: [0.1, 0.2, 0.3] → '[0.1,0.2,0.3]'
- */
 function formatVectorLiteral(embedding: number[]): string {
   return `[${embedding.join(",")}]`;
 }

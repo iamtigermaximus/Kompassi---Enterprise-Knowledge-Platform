@@ -398,6 +398,22 @@ const DocStatus = styled.span<{ $status: string }>`
         : "var(--bg-secondary)"};
 `;
 
+const DeleteBtn = styled.button`
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 11px;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--error);
+    color: var(--error);
+  }
+`;
+
 const EmptyState = styled.p`
   font-family: var(--font);
   font-size: 13px;
@@ -608,6 +624,7 @@ export default function WorkspacePage() {
   const [uploadError, setUploadError] = useState("");
   const [uploadSuccess, setUploadSuccess] = useState("");
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ─── Chat state ─────────────────────────────────────────────────
@@ -645,6 +662,41 @@ export default function WorkspacePage() {
     router.replace("/login");
   };
 
+  // ─── Fetch documents ────────────────────────────────────────────
+  const fetchDocuments = useCallback(async () => {
+    try {
+      const res = await fetch("/api/documents");
+      if (res.ok) {
+        const data = await res.json();
+        setDocuments(data.documents ?? []);
+      }
+    } catch {
+      // silent
+    }
+  }, []);
+
+  // Load documents after tenant is resolved
+  useEffect(() => {
+    if (tenant) fetchDocuments();
+  }, [tenant, fetchDocuments]);
+
+  // Auto-select all docs when list loads
+  useEffect(() => {
+    setSelectedDocs(new Set(documents.map((d) => d.id)));
+  }, [documents]);
+
+  // ─── Delete document ────────────────────────────────────────────
+  const handleDelete = async (docId: string) => {
+    try {
+      const res = await fetch(`/api/documents/${docId}`, { method: "DELETE" });
+      if (res.ok) {
+        setDocuments((prev) => prev.filter((d) => d.id !== docId));
+      }
+    } catch {
+      // silent
+    }
+  };
+
   // ─── Upload handler ─────────────────────────────────────────────
   const handleFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
@@ -680,19 +732,7 @@ export default function WorkspacePage() {
       setUploadSuccess(
         `"${data.document.title}" uploaded — ${data.chunksCreated} chunks indexed.`
       );
-
-      setDocuments((prev) => [
-        {
-          id: data.document.id,
-          title: data.document.title,
-          filename: data.document.filename,
-          fileSize: data.document.fileSize,
-          status: data.document.status,
-          createdAt: new Date().toISOString(),
-          chunksCreated: data.chunksCreated,
-        },
-        ...prev,
-      ]);
+      fetchDocuments();
     } catch {
       setUploadError("Network error during upload.");
     } finally {
@@ -737,7 +777,10 @@ export default function WorkspacePage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({
+          query,
+          documentIds: [...selectedDocs],
+        }),
       });
 
       const data = await res.json();
@@ -956,6 +999,20 @@ export default function WorkspacePage() {
                 <DocList>
                   {documents.map((doc) => (
                     <DocRow key={doc.id}>
+                      <input
+                        type="checkbox"
+                        checked={selectedDocs.has(doc.id)}
+                        onChange={() => {
+                          setSelectedDocs((prev) => {
+                            const next = new Set(prev);
+                            next.has(doc.id)
+                              ? next.delete(doc.id)
+                              : next.add(doc.id);
+                            return next;
+                          });
+                        }}
+                        style={{ accentColor: "var(--primary)", width: 16, height: 16, cursor: "pointer" }}
+                      />
                       <DocInfo>
                         <DocName>{doc.title}</DocName>
                         <DocMeta>
@@ -964,9 +1021,14 @@ export default function WorkspacePage() {
                             ` · ${doc.chunksCreated} chunks`}
                         </DocMeta>
                       </DocInfo>
-                      <DocStatus $status={doc.status}>
-                        {doc.status}
-                      </DocStatus>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <DocStatus $status={doc.status}>
+                          {doc.status}
+                        </DocStatus>
+                        <DeleteBtn onClick={() => handleDelete(doc.id)}>
+                          Delete
+                        </DeleteBtn>
+                      </div>
                     </DocRow>
                   ))}
                 </DocList>
