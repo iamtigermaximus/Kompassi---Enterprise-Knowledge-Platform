@@ -230,7 +230,11 @@ export default function LoginPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.user) {
-          router.replace("/admin/dashboard");
+          const dest =
+            data.user.role === "ADMIN"
+              ? "/admin/dashboard"
+              : "/workspace";
+          router.replace(dest);
         }
       })
       .catch(() => {});
@@ -269,7 +273,10 @@ export default function LoginPage() {
         return;
       }
 
-      router.replace("/admin/dashboard");
+      const dest = data.user?.role === "ADMIN"
+        ? "/admin/dashboard"
+        : "/workspace";
+      router.replace(dest);
     } catch {
       setError("Network error. Please try again.");
       setLoading(false);

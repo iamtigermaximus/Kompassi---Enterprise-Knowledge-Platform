@@ -101,7 +101,7 @@ const ThemeToggleBtn = styled.button`
   }
 `;
 
-const LoginLink = styled.a`
+const NavLink = styled.a`
   padding: 8px 16px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -116,6 +116,19 @@ const LoginLink = styled.a`
   &:hover {
     border-color: var(--primary);
     color: var(--primary);
+  }
+`;
+
+const PrimaryLink = styled(NavLink)`
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  font-weight: 600;
+
+  &:hover {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+    color: #ffffff;
   }
 `;
 
@@ -277,11 +290,14 @@ export default function Home() {
           <NavName>KOMPASSI</NavName>
         </NavBrand>
         <NavActions>
+          <Link href="/workspace" passHref legacyBehavior>
+            <NavLink>Workspace</NavLink>
+          </Link>
           <ThemeToggleBtn onClick={toggle} title="Toggle theme">
             {theme === "dark" ? "☀️" : "🌙"}
           </ThemeToggleBtn>
           <Link href="/login" passHref legacyBehavior>
-            <LoginLink>Sign In</LoginLink>
+            <PrimaryLink>Sign In</PrimaryLink>
           </Link>
         </NavActions>
       </NavBar>
