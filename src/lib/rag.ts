@@ -64,9 +64,17 @@ export async function ragQuery(
   }
 
   // Step 3: Vector similarity search (cosine distance), tenant-scoped
-  const docIdFilter = documentIds && documentIds.length > 0
-    ? `AND c."documentId" IN (${documentIds.map((_, i) => `$${i + 3}`).join(",")})`
+  const hasDocFilter = documentIds && documentIds.length > 0;
+  const docIdPlaceholders = hasDocFilter
+    ? documentIds.map((_, i) => `$${i + 3}`).join(",")
     : "";
+  const limitParam = hasDocFilter ? `$${3 + documentIds.length}` : "$3";
+
+  const params: unknown[] = [embeddingLiteral, tenantId];
+  if (hasDocFilter) {
+    params.push(...documentIds);
+  }
+  params.push(TOP_K);
 
   const chunks = await prisma.$queryRawUnsafe<
     Array<{
@@ -90,13 +98,10 @@ export async function ragQuery(
      FROM chunks c
      JOIN documents d ON d.id = c."documentId"
      WHERE c."tenantId" = $2
-       ${docIdFilter}
+       ${hasDocFilter ? `AND c."documentId" IN (${docIdPlaceholders})` : ""}
      ORDER BY c.embedding <=> $1::vector
-     LIMIT $3`,
-    embeddingLiteral,
-    tenantId,
-    ...(documentIds && documentIds.length > 0 ? documentIds : []),
-    TOP_K
+     LIMIT ${limitParam}`,
+    ...params
   );
 
   console.log(`[rag] Vector search returned ${chunks.length} chunks (top similarities: ${chunks.slice(0, 3).map(c => c.similarity?.toFixed(4)).join(", ")})`);

@@ -35,8 +35,8 @@ export function useAdminSession() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.user) {
-          // Only ADMIN role users can access admin pages
-          if (data.user.role !== "ADMIN") {
+          // Only SUPERADMIN users can access admin pages
+          if (data.user.role !== "SUPERADMIN") {
             router.replace("/workspace");
             return;
           }

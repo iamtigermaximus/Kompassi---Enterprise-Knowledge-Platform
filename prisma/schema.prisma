@@ -31,15 +31,18 @@ model Tenant {
 }
 
 // ─── User ────────────────────────────────────────────────────────────────────
-// Members belong to a single tenant.
+// Users belong to a role group:
+//   SUPERADMIN — platform operator, tenantId is NULL, sees all tenants
+//   ADMIN      — tenant admin, manages own company's workspace
+//   MEMBER     — tenant member, uploads docs and chats
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
   password  String   @default("") // scrypt-hashed: salt:hash
-  role      String   @default("MEMBER") // ADMIN | MEMBER
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role      String   @default("MEMBER") // SUPERADMIN | ADMIN | MEMBER
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

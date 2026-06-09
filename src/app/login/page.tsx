@@ -231,7 +231,7 @@ export default function LoginPage() {
       .then((data) => {
         if (data?.user) {
           const dest =
-            data.user.role === "ADMIN"
+            data.user.role === "SUPERADMIN"
               ? "/admin/dashboard"
               : "/workspace";
           router.replace(dest);
@@ -273,7 +273,7 @@ export default function LoginPage() {
         return;
       }
 
-      const dest = data.user?.role === "ADMIN"
+      const dest = data.user?.role === "SUPERADMIN"
         ? "/admin/dashboard"
         : "/workspace";
       router.replace(dest);

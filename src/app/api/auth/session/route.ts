@@ -26,6 +26,7 @@ export async function GET(request: Request) {
       email: payload.email,
       name: payload.name,
       role: payload.role,
+      tenantId: payload.tenantId ?? null,
     },
   });
 }

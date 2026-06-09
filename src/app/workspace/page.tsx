@@ -639,6 +639,11 @@ export default function WorkspacePage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.user) {
+          // Superadmins should use the admin dashboard, not the workspace
+          if (data.user.role === "SUPERADMIN") {
+            router.replace("/admin/dashboard");
+            return null;
+          }
           setUser(data.user);
           // Fetch tenant info
           return fetch("/api/tenants/me").then((r) =>
@@ -654,7 +659,7 @@ export default function WorkspacePage() {
       })
       .catch(() => {})
       .finally(() => setSessionLoading(false));
-  }, []);
+  }, [router]);
 
   // ─── Sign out ───────────────────────────────────────────────────
   const handleSignOut = async () => {

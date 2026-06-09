@@ -42,9 +42,9 @@ export function withAdminAuth<T>(
           { status: 401 }
         );
       }
-      if (session.role !== "ADMIN") {
+      if (session.role !== "SUPERADMIN") {
         return Response.json(
-          { error: "Admin access only." },
+          { error: "Platform admin access only. Tenant admins should use the workspace." },
           { status: 403 }
         );
       }

@@ -72,6 +72,24 @@ const tenants = [
 async function main() {
   console.log(" Seeding KOMPASSI database...\n");
 
+  // ─── Platform Superadmin ────────────────────────────────────────────
+  // No tenant — sees all companies in the admin dashboard.
+  const superadminPw = await hashPassword("kompassi123");
+  await prisma.user.upsert({
+    where: { email: "superadmin@kompassi.dev" },
+    update: { password: superadminPw },
+    create: {
+      email: "superadmin@kompassi.dev",
+      name: "Platform Admin",
+      password: superadminPw,
+      role: "SUPERADMIN",
+    },
+  });
+  console.log("  Platform Superadmin");
+  console.log("    Email:    superadmin@kompassi.dev");
+  console.log("    Password: kompassi123");
+  console.log("    Role:     SUPERADMIN (no tenant — sees everything)\n");
+
   for (const t of tenants) {
     const apiKey = generateApiKey();
 
@@ -110,10 +128,15 @@ async function main() {
     console.log(`    Default password for all users: kompassi123\n`);
   }
 
-  console.log("Done. Admin login credentials:");
-  console.log("  Email:  alice@startuplabs.dev  (or any seeded user)");
-  console.log("  Password: kompassi123");
-  console.log("  URL:     http://localhost:3000/login\n");
+  console.log("Done. Login credentials:");
+  console.log("  PLATFORM ADMIN (sees all companies):");
+  console.log("    Email:    superadmin@kompassi.dev");
+  console.log("    Password: kompassi123");
+  console.log("    Goes to:  /admin/dashboard\n");
+  console.log("  TENANT USERS (see only their company):");
+  console.log("    Email:    alice@startuplabs.dev  (or any seeded user)");
+  console.log("    Password: kompassi123");
+  console.log("    Goes to:  /workspace\n");
   console.log("For API access (x-api-key header):");
   console.log("  Use the API keys printed above.\n");
 }

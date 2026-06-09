@@ -145,7 +145,16 @@ async function resolveTenant(request: Request): Promise<{
   const token = getSessionCookie(request);
   if (token) {
     const payload = verifyJwt(token);
-    if (payload && payload.tenantId) {
+    if (payload) {
+      // Superadmins (no tenantId) cannot access tenant-scoped routes.
+      // They should use the admin dashboard instead.
+      if (!payload.tenantId) {
+        throw new AuthError(
+          "Platform admins do not have access to tenant workspaces. Use the admin dashboard at /admin/dashboard.",
+          403
+        );
+      }
+
       const tenant = await prisma.tenant.findUnique({
         where: { id: payload.tenantId },
       });
