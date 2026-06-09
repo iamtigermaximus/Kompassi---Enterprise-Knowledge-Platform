@@ -65,12 +65,12 @@ export async function ragQuery(
        c.content,
        c."chunkIndex",
        d.title,
-       1 - (c.embedding <=> $1::extensions.vector) AS similarity
+       1 - (c.embedding <=> $1::vector) AS similarity
      FROM chunks c
      JOIN documents d ON d.id = c."documentId"
      WHERE c."tenantId" = $2
-       AND 1 - (c.embedding <=> $1::extensions.vector) > $3
-     ORDER BY c.embedding <=> $1::extensions.vector
+       AND 1 - (c.embedding <=> $1::vector) > $3
+     ORDER BY c.embedding <=> $1::vector
      LIMIT $4`,
     embeddingLiteral,
     tenantId,

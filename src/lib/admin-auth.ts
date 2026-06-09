@@ -42,6 +42,12 @@ export function withAdminAuth<T>(
           { status: 401 }
         );
       }
+      if (session.role !== "ADMIN") {
+        return Response.json(
+          { error: "Admin access only." },
+          { status: 403 }
+        );
+      }
       return (await handler(request)) as Response;
     } catch (error) {
       if (error instanceof AdminAuthError) {

@@ -1,5 +1,6 @@
 // KOMPASSI - Admin Auth Guard
-// Wrap any admin page with this. Redirects to /login if not authenticated.
+// Wrap any admin page with this.
+// Redirects to /login if not authenticated, /workspace if not ADMIN.
 
 "use client";
 
@@ -34,6 +35,11 @@ export function useAdminSession() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.user) {
+          // Only ADMIN role users can access admin pages
+          if (data.user.role !== "ADMIN") {
+            router.replace("/workspace");
+            return;
+          }
           setUser(data.user);
         } else {
           router.replace("/login");

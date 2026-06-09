@@ -148,7 +148,7 @@ export const POST = withAuth(async (request, tenant) => {
   for (const chunk of chunkRows) {
     await prisma.$executeRawUnsafe(
       `INSERT INTO chunks ("id", "documentId", "tenantId", content, embedding, "chunkIndex", "createdAt")
-       VALUES (gen_random_uuid()::text, $1, $2, $3, $4::extensions.vector, $5, NOW())`,
+       VALUES (gen_random_uuid()::text, $1, $2, $3, $4::vector, $5, NOW())`,
       chunk.documentId,
       chunk.tenantId,
       chunk.content,
